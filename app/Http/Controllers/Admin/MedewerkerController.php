@@ -130,6 +130,92 @@ class MedewerkerController extends Controller
     }
 
     /** Alias (schrijfwijze uit het rooster) koppelen. */
+    /**
+     * Lijst inlezen (geplakt of xlsx): per regel naam + 06-nummer en/of personeelsnummer.
+     * CORE-waarden blijven leidend; alleen lege velden worden (handmatig) gevuld.
+     */
+    public function lijst(Request $request)
+    {
+        $regels = [];
+        if ($request->hasFile('bestand')) {
+            $pad = $request->file('bestand')->getRealPath();
+            try {
+                foreach ((new \App\Services\XlsxLezer($pad))->rijen() as $rij) {
+                    $regels[] = array_values(array_map(fn ($v) => trim((string) $v), $rij));
+                }
+            } catch (\Throwable $e) {
+                return back()->with('fout', 'Excel niet leesbaar: '.$e->getMessage());
+            }
+        }
+        foreach (preg_split('/\r?\n/', (string) $request->input('tekst', '')) as $regel) {
+            $regel = trim($regel);
+            if ($regel !== '') {
+                $regels[] = array_map('trim', preg_split('/\s*[;,\t|]\s*/', $regel));
+            }
+        }
+        if (! $regels) {
+            return back()->with('fout', 'Geen regels gevonden. Plak per regel: naam; 06-nummer; personeelsnummer (of upload een Excel).');
+        }
+        $aanmaken = $request->boolean('aanmaken', true);
+        $gekoppeld = $aangemaakt = 0;
+        $onbekend = [];
+        $overgeslagen = 0;
+        $alle = Medewerker::all()->all();
+        foreach ($regels as $velden) {
+            $naam = (string) ($velden[0] ?? '');
+            if ($naam === '' || preg_match('/^(naam|medewerker|name)$/i', $naam)) {
+                continue; // lege regel of kopregel
+            }
+            $telefoon = null;
+            $nummer = null;
+            foreach (array_slice($velden, 1) as $v) {
+                $cijfers = preg_replace('/\D+/', '', $v);
+                if ($cijfers === '') {
+                    continue;
+                }
+                if (preg_match('/^(\+|00)?(31|32)?0?6\d{8}$/', $cijfers) || (str_starts_with($cijfers, '0') && strlen($cijfers) >= 10)) {
+                    $telefoon = $telefoon ?? $v;
+                } elseif (strlen($cijfers) <= 8) {
+                    $nummer = $nummer ?? ltrim($v);
+                }
+            }
+            $m = NaamMatch::zoek($naam, $alle)['medewerker'];
+            if (! $m) {
+                if (! $aanmaken) {
+                    $onbekend[] = $naam;
+                    continue;
+                }
+                $m = Medewerker::create(['naam' => trim($naam), 'actief' => true]);
+                $alle[] = $m;
+                $aangemaakt++;
+            } else {
+                $gekoppeld++;
+            }
+            if (NaamMatch::normaliseer($naam) !== NaamMatch::normaliseer($m->naam)) {
+                NaamMatch::leerAlias($naam, $m);
+            }
+            $upd = [];
+            if ($telefoon && ! $m->telefoon) {
+                $upd['telefoon_handmatig'] = $telefoon;
+            }
+            if ($nummer && ! $m->personeelsnummer) {
+                $upd['personeelsnummer_handmatig'] = $nummer;
+            }
+            if ($upd) {
+                $m->update($upd);
+            } elseif (! $telefoon && ! $nummer) {
+                $overgeslagen++;
+            }
+        }
+        audit('medewerkers.lijst', 'Lijst ingelezen', ['gekoppeld' => $gekoppeld, 'aangemaakt' => $aangemaakt, 'onbekend' => $onbekend]);
+        $msg = "Lijst verwerkt: $gekoppeld bestaande medewerkers bijgewerkt, $aangemaakt nieuw aangemaakt".($overgeslagen ? ", $overgeslagen regels zonder nummer" : '').'.';
+        if ($onbekend) {
+            $msg .= ' Niet gevonden: '.implode(', ', $onbekend).'.';
+        }
+
+        return redirect()->route('admin.medewerkers')->with('ok', $msg);
+    }
+
     public function alias(Request $request, Medewerker $medewerker)
     {
         $alias = trim((string) $request->input('alias', ''));

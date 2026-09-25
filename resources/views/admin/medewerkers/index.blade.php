@@ -16,6 +16,7 @@
     </div>
     <div class="d-flex gap-2">
         <form method="post" action="{{ route('admin.medewerkers.sync') }}">@csrf<button class="btn btn-boels btn-sm"><i class="bi bi-cloud-download me-1"></i>Nu ophalen uit CORE</button></form>
+        <button type="button" class="btn btn-outline-boels btn-sm" data-bs-toggle="modal" data-bs-target="#lijst"><i class="bi bi-list-ol me-1"></i>Telefoon- en personeelsnummers inlezen</button>
         <button type="button" class="btn btn-outline-boels btn-sm" data-bs-toggle="modal" data-bs-target="#nieuw"><i class="bi bi-person-plus me-1"></i>Handmatig toevoegen</button>
     </div>
 </div>
@@ -119,4 +120,17 @@
 @if(old('naam') !== null)
 @push('scripts')<script>new bootstrap.Modal(document.getElementById('nieuw')).show();</script>@endpush
 @endif
+
+<div class="modal fade" id="lijst" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
+    <form method="post" action="{{ route('admin.medewerkers.lijst') }}" enctype="multipart/form-data">@csrf
+    <div class="modal-header"><h5 class="modal-title"><i class="bi bi-list-ol me-2 text-boels"></i>Telefoon- en personeelsnummers inlezen</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+        <p class="small text-muted mb-2">Plak per regel <strong>naam; 06-nummer; personeelsnummer</strong> (volgorde van nummer en telefoon maakt niet uit, één van beide mag ontbreken), of upload een Excel met die kolommen. Namen worden herkend zoals in het rooster; gegevens uit CORE blijven altijd voorgaan, alleen lege velden worden gevuld.</p>
+        <textarea name="tekst" class="form-control font-monospace" rows="8" placeholder="Anne Vasseur; 06-12345678; 17301&#10;Jefke Knubben; 0612345678; 23429"></textarea>
+        <div class="mt-2"><label class="form-label small mb-1">Of Excel-bestand (.xlsx): kolommen naam, telefoon, personeelsnummer</label><input type="file" name="bestand" accept=".xlsx" class="form-control form-control-sm"></div>
+        <div class="form-check mt-2"><input class="form-check-input" type="checkbox" name="aanmaken" value="1" id="lijst-aanmaken" checked><label class="form-check-label small" for="lijst-aanmaken">Onbekende namen als handmatige medewerker aanmaken</label></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Annuleren</button><button class="btn btn-boels"><i class="bi bi-check2 me-1"></i>Inlezen</button></div>
+    </form>
+</div></div></div>
 @endsection
