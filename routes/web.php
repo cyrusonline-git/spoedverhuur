@@ -69,8 +69,8 @@ Route::middleware('core')->group(function () {
         Route::get('/medewerkers', [MedewerkerController::class, 'index'])->name('medewerkers');
         Route::post('/medewerkers/sync', [MedewerkerController::class, 'sync'])->name('medewerkers.sync');
         Route::post('/medewerkers', [MedewerkerController::class, 'opslaan'])->name('medewerkers.opslaan');           // nieuw (handmatig)
-        Route::post('/medewerkers/{medewerker}', [MedewerkerController::class, 'bijwerken'])->name('medewerkers.bijwerken');
         Route::post('/medewerkers/lijst', [MedewerkerController::class, 'lijst'])->name('medewerkers.lijst');   // bulk: naam · telefoon · personeelsnummer
+        Route::post('/medewerkers/{medewerker}', [MedewerkerController::class, 'bijwerken'])->name('medewerkers.bijwerken');
         Route::post('/medewerkers/{medewerker}/alias', [MedewerkerController::class, 'alias'])->name('medewerkers.alias');
         Route::delete('/medewerkers/alias/{alias}', [MedewerkerController::class, 'aliasVerwijder'])->name('medewerkers.alias.verwijder');
         // Dienstsoorten
