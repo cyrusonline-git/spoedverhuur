@@ -297,4 +297,51 @@ class MailDienst
     {
         return $this->verstuur('test', (string) now()->timestamp, [$aan], 'Testmail Spoedverhuur', "Dit is een testmail van de Spoedverhuur-app.\nTestmodus: ".(self::testModus() ? 'aan' : 'uit')."\nTijd: ".now('Europe/Amsterdam')->format('d-m-Y H:i'), ['door' => core_gebruiker()['name'] ?? null], true);
     }
+
+    /**
+     * Voorbeeld per ontvanger zónder te versturen (voor de preview in het mailcentrum).
+     * $soort: aankondiging | dienst_vandaag. Geeft [['naam','email','referentie','onderwerp','tekst','ics'=>bool,'cc'=>[]]].
+     */
+    public function voorbeeld(string $soort, RoosterWeek $week): array
+    {
+        [$onderwerpKey, $tekstKey] = $soort === 'dienst_vandaag'
+            ? ['mail_vandaag_onderwerp', 'mail_vandaag_tekst']
+            : ['mail_aankondiging_onderwerp', 'mail_aankondiging_tekst'];
+        $t = self::teksten();
+        $overzicht = $this->weekOverzichtTekst($week);
+        $cc = self::adressen('mail_cc_medewerkers');
+        $uit = [];
+        $tw = Toewijzing::with(['medewerker', 'soort'])->where('rooster_week_id', $week->id)->get();
+        foreach ($tw as $x) {
+            $m = $x->medewerker;
+            $vars = [
+                'voornaam' => $this->voornaam($m), 'naam' => $x->naam(), 'dienst' => $x->soort?->naam,
+                'week' => $week->weeknummer, 'van' => $week->datumVanDag($x->dag_van)->format('d-m-Y'), 'tm' => $week->datumVanDag($x->dag_tm)->format('d-m-Y'),
+                'overzicht' => $overzicht, 'tweede_lijn' => $this->tweedeLijnTekst(), 'url' => $this->url('/mijn-diensten'),
+            ];
+            $uit[] = [
+                'naam' => $x->naam(), 'email' => $m?->emailEffectief(), 'dienst' => $x->soort?->naam,
+                'referentie' => $week->jaar.'-'.$week->weeknummer.':'.($m?->id ?? 'x'.$x->id),
+                'onderwerp' => $this->vul(setting($onderwerpKey, $t[$onderwerpKey][1]), $vars),
+                'tekst' => $this->vul(setting($tekstKey, $t[$tekstKey][1]), $vars),
+                'ics' => $soort === 'aankondiging', 'cc' => $cc,
+            ];
+        }
+        foreach (DienstSoort::actief()->where('vast', true)->where('vaste_meldingen', true)->get() as $s) {
+            if (! $s->vaste_email) {
+                continue;
+            }
+            $vars = ['voornaam' => explode(' ', (string) $s->vaste_naam)[0] ?: 'collega', 'naam' => $s->vaste_naam, 'dienst' => $s->naam, 'week' => $week->weeknummer,
+                'van' => $week->van->format('d-m-Y'), 'tm' => $week->tm->format('d-m-Y'), 'overzicht' => $overzicht, 'tweede_lijn' => $this->tweedeLijnTekst(), 'url' => $this->url('/rooster')];
+            $uit[] = [
+                'naam' => $s->vaste_naam.' (vast)', 'email' => $s->vaste_email, 'dienst' => $s->naam,
+                'referentie' => $week->jaar.'-'.$week->weeknummer.':vast'.$s->id,
+                'onderwerp' => $this->vul(setting($onderwerpKey, $t[$onderwerpKey][1]), $vars),
+                'tekst' => $this->vul(setting($tekstKey, $t[$tekstKey][1]), $vars),
+                'ics' => false, 'cc' => [],
+            ];
+        }
+
+        return $uit;
+    }
 }
