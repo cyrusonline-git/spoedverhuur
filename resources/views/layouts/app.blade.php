@@ -51,16 +51,19 @@
         <div class="collapse navbar-collapse" id="nav">
             @if($rol)
             <ul class="navbar-nav me-auto">
-                <li class="nav-item"><a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a></li>
-                @if(in_array($rol, ['binnendienst', 'werkplaats', 'manager', 'fleet', 'admin']))
-                <li class="nav-item"><a class="nav-link {{ request()->routeIs('uploads.*', 'beschikbaarheid', 'aanvragen.nieuw') ? 'active' : '' }}" href="{{ route('uploads.index') }}"><i class="bi bi-upload me-1"></i>Uploads</a></li>
-                <li class="nav-item"><a class="nav-link {{ request()->routeIs('aanvragen.index', 'aanvragen.toon') ? 'active' : '' }}" href="{{ route('aanvragen.index') }}"><i class="bi bi-envelope-paper me-1"></i>Aanvragen</a></li>
+                <li class="nav-item"><a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}"><i class="bi bi-speedometer2 me-1"></i>Start</a></li>
+                <li class="nav-item"><a class="nav-link {{ request()->routeIs('rooster', 'rooster.*', 'wie') ? 'active' : '' }}" href="{{ route('rooster') }}"><i class="bi bi-calendar3 me-1"></i>Rooster</a></li>
+                <li class="nav-item"><a class="nav-link {{ request()->routeIs('mijn-diensten', 'mijn-vergoedingen') ? 'active' : '' }}" href="{{ route('mijn-diensten') }}"><i class="bi bi-person-check me-1"></i>Mijn diensten</a></li>
+                <li class="nav-item"><a class="nav-link {{ request()->routeIs('ruilen', 'ruilen.*') ? 'active' : '' }}" href="{{ route('ruilen') }}"><i class="bi bi-arrow-left-right me-1"></i>Ruilen</a></li>
+                @if(in_array($rol, ['manager', 'admin']))
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle {{ request()->routeIs('voorraad.*') ? 'active' : '' }}" href="#" data-bs-toggle="dropdown"><i class="bi bi-boxes me-1"></i>Voorraad</a>
+                    <a class="nav-link dropdown-toggle {{ request()->routeIs('overzicht.*') ? 'active' : '' }}" href="#" data-bs-toggle="dropdown"><i class="bi bi-bar-chart-line me-1"></i>Overzicht</a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{{ route('voorraad.werkplaats') }}"><i class="bi bi-wrench-adjustable me-2"></i>Werkplaats: nakijklijst</a></li>
-                        <li><a class="dropdown-item" href="{{ route('voorraad.depots') }}"><i class="bi bi-bar-chart-line me-2"></i>Alle depots</a></li>
-                        <li><a class="dropdown-item" href="{{ route('voorraad.minimaal') }}"><i class="bi bi-sliders2 me-2"></i>Minimale voorraad instellen</a></li>
+                        <li><a class="dropdown-item" href="{{ route('overzicht.index') }}"><i class="bi bi-grid me-2"></i>Dashboard</a></li>
+                        <li><a class="dropdown-item" href="{{ route('overzicht.bezetting') }}"><i class="bi bi-calendar-check me-2"></i>Bezetting komende weken</a></li>
+                        <li><a class="dropdown-item" href="{{ route('overzicht.ruilingen') }}"><i class="bi bi-arrow-left-right me-2"></i>Ruilingen</a></li>
+                        <li><a class="dropdown-item" href="{{ route('overzicht.belasting') }}"><i class="bi bi-people me-2"></i>Wie draait hoeveel</a></li>
+                        <li><a class="dropdown-item" href="{{ route('overzicht.audit') }}"><i class="bi bi-journal-text me-2"></i>Logboek</a></li>
                     </ul>
                 </li>
                 @endif
@@ -68,10 +71,14 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle {{ request()->routeIs('admin.*') ? 'active' : '' }}" href="#" data-bs-toggle="dropdown"><i class="bi bi-gear me-1"></i>Beheer</a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{{ route('admin.depots') }}"><i class="bi bi-geo-alt me-2"></i>Depots &amp; areas (uit CORE)</a></li>
-                        <li><a class="dropdown-item" href="{{ route('admin.kolommen') }}"><i class="bi bi-table me-2"></i>Kolomindeling &amp; statussen</a></li>
+                        <li><a class="dropdown-item" href="{{ route('admin.import') }}"><i class="bi bi-upload me-2"></i>Rooster importeren</a></li>
+                        <li><a class="dropdown-item" href="{{ route('admin.medewerkers') }}"><i class="bi bi-people me-2"></i>Medewerkers &amp; koppelingen</a></li>
+                        <li><a class="dropdown-item" href="{{ route('admin.dienstsoorten') }}"><i class="bi bi-list-check me-2"></i>Dienstsoorten</a></li>
+                        <li><a class="dropdown-item" href="{{ route('admin.ruilingen') }}"><i class="bi bi-arrow-left-right me-2"></i>Ruilingen beheren</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{{ route('admin.mail') }}"><i class="bi bi-envelope me-2"></i>Mailcentrum</a></li>
+                        <li><a class="dropdown-item" href="{{ route('admin.maand') }}"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Maandoverzicht vergoedingen</a></li>
                         <li><a class="dropdown-item" href="{{ route('admin.instellingen') }}"><i class="bi bi-sliders me-2"></i>Instellingen</a></li>
-                        <li><a class="dropdown-item" href="{{ route('admin.mail') }}"><i class="bi bi-envelope me-2"></i>Mailtemplates &amp; testmail</a></li>
                     </ul>
                 </li>
                 @endif
@@ -85,7 +92,7 @@
                         @if($rol)<span class="rol-badge ms-2">{{ rol_naam($rol) }}</span>@endif
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><h6 class="dropdown-header">{{ $gebruiker['email'] ?? '' }}<br><small>Depot: {{ session('eigen_depot') ?: '—' }} · Area: {{ session('eigen_area') ?: '—' }}</small></h6></li>
+                        <li><h6 class="dropdown-header">{{ $gebruiker['email'] ?? '' }}<br><small>Roosterpersoon: {{ eigen_medewerker()?->naam ?? 'niet gekoppeld' }}</small></h6></li>
                         @if(count($rollen) > 1)
                         <li><a class="dropdown-item" href="{{ route('kies-rol', ['wissel' => 1]) }}"><i class="bi bi-arrow-left-right me-2"></i>Wissel rol</a></li>
                         @endif
@@ -106,7 +113,7 @@
     @yield('inhoud')
 </main>
 
-<footer class="text-center py-3">Boels Industrial · Spoedverhuur · ingelogd via Boels CORE</footer>
+<footer class="text-center py-3">Boels Industrial · Spoedverhuur · ingelogd via Boels CORE @if(\App\Services\MailDienst::testModus()) · <span class="badge bg-warning text-dark">TESTMODUS: alle mails gaan naar het testadres</span> @endif</footer>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 @stack('scripts')
 </body>
