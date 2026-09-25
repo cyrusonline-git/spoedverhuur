@@ -1,0 +1,99 @@
+name: Build & Release for HTTPS-pull deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build & Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, intl, pdo_mysql, pdo_sqlite, gd, zip, bcmath, fileinfo
+          tools: composer:v2
+          coverage: none
+
+      - name: Create dummy .env for build
+        run: cp .env.example .env
+
+      - name: Install PHP dependencies
+        run: composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-scripts
+
+      - name: Discover packages
+        run: php artisan package:discover --ansi
+
+      - name: Remove build-only .env
+        run: rm -f .env
+
+      - name: Prepare artisan permissions
+        run: chmod +x artisan
+
+      # ============ BUILD ZIPS ============
+      - name: Package Laravel app into zip
+        run: |
+          mkdir -p deploy
+          zip -rq deploy/laravel_app.zip . \
+            -x ".git/*" ".github/*" "node_modules/*" "tests/*" \
+               ".DS_Store" "docs/*" "public/*" ".env" ".env.*" \
+               "README.md" "deploy/*"
+          ls -lh deploy/
+
+      - name: Package public into zip
+        run: |
+          cd public && zip -rq ../deploy/public_html.zip . -x ".DS_Store" && cd ..
+          ls -lh deploy/
+
+      # ============ MAKE GITHUB RELEASE ============
+      # Antagonist FTP is te instabiel — we uploaden naar GitHub Releases
+      # en laten Antagonist ze zelf via HTTPS pull (via __pull_deploy.php).
+      - name: Create timestamped release tag
+        id: tag
+        run: |
+          TAG="deploy-$(date +%Y%m%d-%H%M%S)-${GITHUB_SHA:0:7}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Tag: $TAG"
+
+      - name: Create GitHub Release with zips
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: "Spoedverhuur deploy ${{ steps.tag.outputs.tag }}"
+          body: |
+            Auto-generated deploy bundle.
+
+            Pull via je eigen deploy-URL (__pull_deploy.php met DEPLOY_SECRET).
+
+            Specifieke versie: &tag=${{ steps.tag.outputs.tag }}
+          files: |
+            deploy/laravel_app.zip
+            deploy/public_html.zip
+          make_latest: 'true'
+
+      - name: Done — open this URL to deploy
+        run: |
+          echo ""
+          echo "=========================================================="
+          echo "✓ Release ${{ steps.tag.outputs.tag }} aangemaakt."
+          echo ""
+          echo "OPEN NU IN BROWSER:"
+          echo ""
+          echo "  je eigen deploy-URL (__pull_deploy.php?k=<DEPLOY_SECRET uit .env>)"
+          echo ""
+          echo "Het script:"
+          echo "  - downloadt de zips via HTTPS van GitHub Releases"
+          echo "  - pakt ze uit in laravel_app/ en public_html/"
+          echo "  - cleart de Laravel cache"
+          echo "  - BLIJFT staan voor volgende deploys"
+          echo "=========================================================="
