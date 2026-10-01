@@ -67,9 +67,33 @@ class MedewerkerController extends Controller
 
             return back()->with('fout', 'CORE niet bereikbaar: de medewerkers zijn niet bijgewerkt. Probeer het later opnieuw.');
         }
-        audit('medewerkers.sync', 'Medewerkers opgehaald uit CORE', ['aantal' => $n]);
+        $k = $sync->herkoppel();
+        audit('medewerkers.sync', 'Medewerkers opgehaald uit CORE', ['aantal' => $n, 'gekoppeld' => $k['gekoppeld']]);
+        $msg = $n.' medewerkerkaarten opgehaald uit CORE.';
+        if ($k['gekoppeld'] > 0) {
+            $msg .= ' '.$k['gekoppeld'].' roosternamen zijn alsnog aan een medewerker gekoppeld.';
+        }
+        if ($k['open'] > 0) {
+            $msg .= ' '.count($k['namen']).' naam/namen uit het rooster konden niet automatisch gekoppeld worden; koppel ze handmatig via een alias.';
+        }
 
-        return back()->with('ok', $n.' medewerkerkaarten opgehaald uit CORE.');
+        return back()->with('ok', $msg);
+    }
+
+    /** Rooster opnieuw koppelen: diensten zonder medewerker alsnog matchen op naam. */
+    public function herkoppel(MedewerkerSync $sync)
+    {
+        $k = $sync->herkoppel();
+        audit('medewerkers.herkoppel', 'Rooster opnieuw gekoppeld', ['gekoppeld' => $k['gekoppeld'], 'open' => $k['open']]);
+        if ($k['gekoppeld'] === 0 && $k['open'] === 0) {
+            return back()->with('ok', 'Alle roosternamen waren al gekoppeld.');
+        }
+        $msg = $k['gekoppeld'].' roosternamen gekoppeld aan een medewerker.';
+        if ($k['open'] > 0) {
+            $msg .= ' Niet gevonden: '.implode(', ', array_keys($k['namen'])).'. Koppel deze handmatig via een alias bij de betreffende medewerker.';
+        }
+
+        return back()->with('ok', $msg);
     }
 
     /** Nieuwe medewerker handmatig (staat niet in CORE). */

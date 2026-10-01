@@ -67,4 +67,48 @@ class MedewerkerSync
             Cache::put('medewerkers.gesynct_op', now()->timestamp, 86400);
         }
     }
+
+    /**
+     * Loopt alle geplande diensten na die nog geen medewerker gekoppeld hebben en
+     * probeert ze alsnog te koppelen aan een medewerker (zelfde naamherkenning als de
+     * import). Herberekent daarna de toewijzingen van de geraakte weken.
+     *
+     * @return array{gekoppeld:int, open:int, namen:array<string,int>}
+     */
+    public function herkoppel(): array
+    {
+        $medewerkers = \App\Models\Medewerker::all()->all();
+        $open = \App\Models\Dienst::whereNull('medewerker_id')->whereNotNull('rooster_naam')->get();
+        $gekoppeld = 0;
+        $weken = [];
+        $onbekend = [];
+        $cache = [];
+        foreach ($open as $dienst) {
+            $naam = trim((string) $dienst->rooster_naam);
+            if ($naam === '') {
+                continue;
+            }
+            $key = NaamMatch::normaliseer($naam);
+            if (! array_key_exists($key, $cache)) {
+                $cache[$key] = NaamMatch::zoek($naam, $medewerkers)['medewerker'];
+            }
+            $m = $cache[$key];
+            if ($m) {
+                $dienst->update(['medewerker_id' => $m->id]);
+                $gekoppeld++;
+                $weken[$dienst->rooster_week_id] = true;
+            } else {
+                $onbekend[$naam] = ($onbekend[$naam] ?? 0) + 1;
+            }
+        }
+        if ($weken) {
+            $toewijzingen = app(Toewijzingen::class);
+            foreach (\App\Models\RoosterWeek::whereIn('id', array_keys($weken))->get() as $week) {
+                $toewijzingen->herbereken($week);
+            }
+        }
+        ksort($onbekend);
+
+        return ['gekoppeld' => $gekoppeld, 'open' => array_sum($onbekend), 'namen' => $onbekend];
+    }
 }

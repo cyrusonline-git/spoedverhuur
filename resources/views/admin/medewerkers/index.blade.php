@@ -16,6 +16,7 @@
     </div>
     <div class="d-flex gap-2">
         <form method="post" action="{{ route('admin.medewerkers.sync') }}">@csrf<button class="btn btn-boels btn-sm"><i class="bi bi-cloud-download me-1"></i>Nu ophalen uit CORE</button></form>
+        <form method="post" action="{{ route('admin.medewerkers.herkoppel') }}">@csrf<button class="btn btn-outline-boels btn-sm" title="Roosternamen die nog niet gekoppeld zijn alsnog aan een medewerker koppelen"><i class="bi bi-link-45deg me-1"></i>Rooster opnieuw koppelen</button></form>
         <button type="button" class="btn btn-outline-boels btn-sm" data-bs-toggle="modal" data-bs-target="#lijst"><i class="bi bi-list-ol me-1"></i>Telefoon- en personeelsnummers inlezen</button>
         <button type="button" class="btn btn-outline-boels btn-sm" data-bs-toggle="modal" data-bs-target="#nieuw"><i class="bi bi-person-plus me-1"></i>Handmatig toevoegen</button>
     </div>

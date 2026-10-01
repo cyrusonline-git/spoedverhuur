@@ -68,6 +68,7 @@ Route::middleware('core')->group(function () {
         // Medewerkers (uit CORE) + aliassen + handmatige velden
         Route::get('/medewerkers', [MedewerkerController::class, 'index'])->name('medewerkers');
         Route::post('/medewerkers/sync', [MedewerkerController::class, 'sync'])->name('medewerkers.sync');
+        Route::post('/medewerkers/herkoppel', [MedewerkerController::class, 'herkoppel'])->name('medewerkers.herkoppel');
         Route::post('/medewerkers', [MedewerkerController::class, 'opslaan'])->name('medewerkers.opslaan');           // nieuw (handmatig)
         Route::post('/medewerkers/lijst', [MedewerkerController::class, 'lijst'])->name('medewerkers.lijst');   // bulk: naam · telefoon · personeelsnummer
         Route::post('/medewerkers/{medewerker}', [MedewerkerController::class, 'bijwerken'])->name('medewerkers.bijwerken');
