@@ -26,6 +26,45 @@
     <div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>{{ $errors->first() }}</div>
 @endif
 
+@if(!empty($nietGekoppeld))
+<div class="card mb-3 border-warning">
+    <div class="card-header bg-warning-subtle d-flex justify-content-between align-items-center">
+        <span class="fw-semibold"><i class="bi bi-link-45deg me-1"></i>{{ count($nietGekoppeld) }} roosternaam/namen nog niet gekoppeld aan een medewerker</span>
+        <form method="post" action="{{ route('admin.medewerkers.herkoppel') }}" class="m-0">@csrf<button class="btn btn-sm btn-outline-secondary" title="Automatisch opnieuw proberen te koppelen">Automatisch opnieuw koppelen</button></form>
+    </div>
+    <div class="card-body py-2">
+        <p class="text-muted small mb-2">Kies per naam de juiste medewerker. De schrijfwijze wordt dan als alias onthouden en meteen in het rooster doorgevoerd.</p>
+        <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0" style="font-size:.85rem">
+            <thead><tr><th>Naam in het rooster</th><th class="text-end">Diensten</th><th>Weken</th><th style="min-width:280px">Koppel aan medewerker</th></tr></thead>
+            <tbody>
+            @foreach($nietGekoppeld as $naam => $info)
+                <tr>
+                    <td class="fw-semibold">{{ $naam }}</td>
+                    <td class="text-end">{{ $info['aantal'] }}</td>
+                    <td class="small text-muted">{{ collect($info['weken'] ?? [])->sort()->map(fn($w) => 'wk '.$w)->implode(', ') }}</td>
+                    <td>
+                        <form method="post" action="" class="d-flex gap-1 koppel-form" data-url="{{ route('admin.medewerkers.alias', ['medewerker' => '__ID__']) }}">
+                            @csrf
+                            <input type="hidden" name="alias" value="{{ $naam }}">
+                            <select name="medewerker_id" class="form-select form-select-sm" required>
+                                <option value="" selected disabled>— kies medewerker —</option>
+                                @foreach($lijst->sortBy('naam') as $m)
+                                    <option value="{{ $m->id }}">{{ $m->naam }}@if(!$m->actief) (inactief)@endif</option>
+                                @endforeach
+                            </select>
+                            <button class="btn btn-sm btn-boels" title="Koppelen"><i class="bi bi-check-lg"></i></button>
+                        </form>
+                    </td>
+                </tr>
+            @endforeach
+            </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+@endif
+
 <form method="get" class="card mb-3"><div class="card-body py-2">
     <div class="row g-2 align-items-center">
         <div class="col-md-4"><input type="search" name="zoek" value="{{ $zoek }}" class="form-control form-control-sm" placeholder="Zoek op naam, e-mail, personeelsnummer of schrijfwijze…"></div>
@@ -134,4 +173,17 @@
     <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Annuleren</button><button class="btn btn-boels"><i class="bi bi-check2 me-1"></i>Inlezen</button></div>
     </form>
 </div></div></div>
+
+@push('scripts')
+<script>
+document.querySelectorAll('.koppel-form').forEach(function (form) {
+  form.addEventListener('submit', function (e) {
+    var sel = form.querySelector('select[name="medewerker_id"]');
+    if (!sel || !sel.value) { e.preventDefault(); return; }
+    form.action = form.dataset.url.replace('__ID__', sel.value);
+  });
+});
+</script>
+@endpush
+
 @endsection

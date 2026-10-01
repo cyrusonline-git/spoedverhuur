@@ -42,8 +42,23 @@ class MedewerkerController extends Controller
         }
         $gesynct = (int) Cache::get('medewerkers.gesynct_op', 0);
 
+        // Roosternamen die (nog) niet aan een medewerker gekoppeld zijn: naam -> [aantal, weken]
+        $nietGekoppeld = [];
+        foreach (\App\Models\Dienst::with('week')->whereNull('medewerker_id')->whereNotNull('rooster_naam')->get() as $d) {
+            $naam = trim((string) $d->rooster_naam);
+            if ($naam === '') {
+                continue;
+            }
+            $nietGekoppeld[$naam]['aantal'] = ($nietGekoppeld[$naam]['aantal'] ?? 0) + 1;
+            if ($d->week) {
+                $nietGekoppeld[$naam]['weken'][$d->week->weeknummer] = $d->week->weeknummer;
+            }
+        }
+        ksort($nietGekoppeld);
+
         return view('admin.medewerkers.index', [
             'lijst' => $lijst,
+            'nietGekoppeld' => $nietGekoppeld,
             'zoek' => $zoek,
             'jaar' => $jaar,
             'gesynct' => $gesynct ? \Carbon\Carbon::createFromTimestamp($gesynct, 'Europe/Amsterdam') : null,
@@ -253,8 +268,11 @@ class MedewerkerController extends Controller
         $bestaand = MedewerkerAlias::with('medewerker')->where('alias', $norm)->first();
         NaamMatch::leerAlias($alias, $medewerker);
         audit('medewerker.alias', $medewerker->naam, ['medewerker_id' => $medewerker->id, 'alias' => $alias, 'verplaatst_van' => $bestaand && $bestaand->medewerker_id !== $medewerker->id ? $bestaand->medewerker?->naam : null]);
+        // De zojuist gekoppelde schrijfwijze ook meteen in het bestaande rooster doorvoeren.
+        $k = app(MedewerkerSync::class)->herkoppel();
+        $extra = $k['gekoppeld'] > 0 ? ' '.$k['gekoppeld'].' dienst(en) in het rooster bijgewerkt.' : '';
 
-        return back()->with('ok', 'Schrijfwijze "'.$alias.'" wordt voortaan herkend als '.$medewerker->naam.'.'.($bestaand && $bestaand->medewerker_id !== $medewerker->id ? ' (Was gekoppeld aan '.$bestaand->medewerker?->naam.'.)' : ''));
+        return back()->with('ok', 'Schrijfwijze "'.$alias.'" wordt voortaan herkend als '.$medewerker->naam.'.'.$extra.($bestaand && $bestaand->medewerker_id !== $medewerker->id ? ' (Was gekoppeld aan '.$bestaand->medewerker?->naam.'.)' : ''));
     }
 
     public function aliasVerwijder(MedewerkerAlias $alias)
